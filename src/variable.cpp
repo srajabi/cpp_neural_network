@@ -3,14 +3,10 @@
 #include <iostream>
 #include <stdlib.h>
 #include <ctime>
+#include "randhelpers.h"
 
 namespace neural_network
 {
-    double randMToN(double M, double N)
-    {
-        return M + (rand() / ( RAND_MAX / (N-M) ) ) ;  
-    }
-
     Variable::Variable()
     {
         this->value = randMToN(-1.5, 1.5);
@@ -47,41 +43,15 @@ namespace neural_network
             i.variable->ClearGradient();
         }
     }
-
-    void Variable::Backward()
+    
+    double Variable::Gradient()
     {
-        // TODO
-    }
-
-    void Variable::Forward()
-    {
-        // TODO
-    }
-
-    double Variable::getGradient()
-    {
-        /*
-        std::cout << "getGradient(): gradient: "
-                    << this->gradient << " "
-                    << this
-                    << std::endl;
-                    */
-
         if(isnan(this->gradient))
         {
             double sum = 0;
             for(auto i : this->children)
             {
-                /*
-                std::cout << "pre getGradient i " << " ";
-                std::cout << i.variable << " " << i.derivative() << std::endl;
-                */
-                sum += i.GetGradient();
-                /*
-                std::cout << "post getGradient i " << " ";
-                std::cout << i.variable << " " << i.derivative() << std::endl;
-                std::cout << sum << std::endl;
-                */
+                sum += i.Gradient();
             }
 
             this->gradient = sum;
@@ -89,18 +59,18 @@ namespace neural_network
         return this->gradient;
     }
 
-    void Variable::setGradient(double gradient)
+    void Variable::Gradient(double gradient)
     {
         this->gradient = gradient;
     }
 
-    double Variable::getValue()
+    double Variable::Value()
     {
         this->value = this->function();
         return this->value;
     }
 
-    void Variable::setValue(double value)
+    void Variable::Value(double value)
     {
         this->value = value;
     }
@@ -112,7 +82,7 @@ namespace neural_network
         std::function<double()> fn = std::bind(
             [](std::shared_ptr<Variable> a, std::shared_ptr<Variable> b)
             {
-                return a->getValue() + b->getValue();
+                return a->Value() + b->Value();
             }, lhs, rhs);
 
         std::shared_ptr<Variable> out(new Variable(fn));
@@ -135,7 +105,7 @@ namespace neural_network
         std::function<double()> fn = std::bind(
             [](std::shared_ptr<Variable> a, std::shared_ptr<Variable> b)
             {
-                return a->getValue() - b->getValue();
+                return a->Value() - b->Value();
             }, lhs, rhs);
 
         std::shared_ptr<Variable> out(
@@ -159,7 +129,7 @@ namespace neural_network
         std::function<double()> fn = std::bind(
             [](std::shared_ptr<Variable> a, std::shared_ptr<Variable> b)
             {
-                return a->getValue() * b->getValue();
+                return a->Value() * b->Value();
             }, lhs, rhs);
 
         std::shared_ptr<Variable> out(
@@ -180,25 +150,41 @@ namespace neural_network
 
         return out;
     }
-/*
+
     std::shared_ptr<Variable> operator/(
         std::shared_ptr<Variable> lhs,
         std::shared_ptr<Variable> rhs)
     {
-        std::shared_ptr<Variable> out(
-            new Variable(lhs->value / rhs->value));
+        std::function<double()> fn = std::bind(
+            [](std::shared_ptr<Variable> a, std::shared_ptr<Variable> b)
+            {
+                return a->Value() / b->Value();
+            }, lhs, rhs);
 
-        lhs->children.push_back({out, 1 / rhs->value});
-        rhs->children.push_back({out, -1 / ::pow(rhs->value, 2)});
+        std::shared_ptr<Variable> out(
+            new Variable(fn));
+
+        std::function<double()> lhs_derivative = [=]()
+        {
+            return 1 / rhs->value;
+        };
+
+        std::function<double()> rhs_derivative = [=]()
+        {
+            return -1 / ::pow(rhs->value, 2);
+        };
+        
+        lhs->children.push_back({out, lhs_derivative});
+        rhs->children.push_back({out, rhs_derivative});
 
         return out;
     }
-*/
+
     std::ostream& operator<<(
         std::ostream& os,
         const std::shared_ptr<Variable> v)
     {
-        os << "(" << v->value << "," << v->gradient << ")" << v.get();
+        os << "(" << v->value << "," << v->gradient << ")";
         return os;
     }
 
@@ -206,7 +192,7 @@ namespace neural_network
     {
         std::function<double()> sin_fn = [=]()
         {
-            return ::sin(v->getValue());
+            return ::sin(v->Value());
         };
         std::shared_ptr<Variable> out(new Variable(sin_fn));
 
@@ -219,58 +205,103 @@ namespace neural_network
 
         return out;
     }
-/*
+
     std::shared_ptr<Variable> cos(std::shared_ptr<Variable> v)
     {
-        std::shared_ptr<Variable> out(new Variable(::cos(v->value)));
+        std::function<double()> fn = [=]()
+        {
+            return ::cos(v->Value());
+        };
+        std::shared_ptr<Variable> out(new Variable(fn));
 
-        v->children.push_back({out, -::sin(v->value)});
+        std::function<double()> derivative = [=]()
+        {
+            return -::sin(v->value);
+        };
+
+        v->children.push_back({out, derivative});
 
         return out;
     }
 
     std::shared_ptr<Variable> exp(std::shared_ptr<Variable> v)
     {
-        std::shared_ptr<Variable> out(new Variable(::exp(v->value)));
+        std::function<double()> fn = [=]()
+        {
+            return ::exp(v->Value());
+        };
+        std::shared_ptr<Variable> out(new Variable(fn));
 
-        v->children.push_back({out, ::exp(v->value)});
+        std::function<double()> derivative = [=]()
+        {
+            return ::exp(v->value);
+        };
+
+        v->children.push_back({out, derivative});
 
         return out;
     }
 
     std::shared_ptr<Variable> log(std::shared_ptr<Variable> v)
     {
-        std::shared_ptr<Variable> out(new Variable(::log(v->value)));
+        std::function<double()> fn = [=]()
+        {
+            return ::log(v->Value());
+        };
+        std::shared_ptr<Variable> out(new Variable(fn));
 
-        v->children.push_back({out, 1 / v->value});
+        std::function<double()> derivative = [=]()
+        {
+            return 1 / v->value;
+        };
+
+        v->children.push_back({out, derivative});
 
         return out;
     }
 
     std::shared_ptr<Variable> abs(std::shared_ptr<Variable> v)
     {
-        std::shared_ptr<Variable> out(new Variable(::abs(v->value)));
+        std::function<double()> fn = [=]()
+        {
+            return ::abs(v->Value());
+        };
+        std::shared_ptr<Variable> out(new Variable(fn));
 
-        double sign = v->value == 0 ? 0 : v->value / ::abs(v->value);
-        v->children.push_back({out, sign});
+        std::function<double()> derivative = [=]()
+        {
+            double sign = v->value == 0 ? 0 : v->value / ::abs(v->value);
+            return sign;
+        };
+
+        v->children.push_back({out, derivative});
 
         return out;
     }
 
     std::shared_ptr<Variable> pow(std::shared_ptr<Variable> v, double p)
     {
-        std::shared_ptr<Variable> out(new Variable(::pow(v->value, p)));
+        std::function<double()> fn = [=]()
+        {
+            return ::pow(v->Value(), p);
+        };
+        std::shared_ptr<Variable> out(new Variable(fn));
 
-        v->children.push_back({out, p * ::pow(v->value, p-1)});
+        std::function<double()> derivative = [=]()
+        {
+            return p * ::pow(v->value, p-1);
+        };
+
+        v->children.push_back({out, derivative});
 
         return out;
     }
-*/
+
     std::shared_ptr<Variable> sigmoid(std::shared_ptr<Variable> v)
     {
         std::function<double()> sigmoid_fn = [=]()
         {
-            return 1 / (1 + ::exp(-v->getValue()));
+            return 1 / (1 + ::exp(-v->Value()));
         };
         std::shared_ptr<Variable> out(new Variable(sigmoid_fn));
 
@@ -284,16 +315,22 @@ namespace neural_network
 
         return out;
     }
-/*
+
     std::shared_ptr<Variable> relu(std::shared_ptr<Variable> v)
     {
-        std::shared_ptr<Variable> out(new Variable(::fmax(0, v->value)));
+        std::function<double()> fn = [=]()
+        {
+            return ::fmax(0, v->Value());
+        };
+        std::shared_ptr<Variable> out(new Variable(fn));
 
-        double derivative = v->value > 0 ? 1 : 0;
+        std::function<double()> derivative = [=]()
+        {
+            return v->value > 0 ? 1 : 0;
+        };
 
         v->children.push_back({out, derivative});
 
         return out;
     }
-*/
 }

@@ -5,57 +5,8 @@
 
 using namespace neural_network;
 
-
-int main(int argc, char** argv)
+int main()
 {
-    std::cout << "hello world" << std::endl;
-
-/* DUAL NUMBERS
-    cpp_nn::Dual x(5, 1);
-    cpp_nn::Dual y(6, 0);
-
-    auto w1 = pow(x, 2);
-
-    cpp_nn::Dual f = y * w1;
- 
-    std::cout << "f: " << f.getDerivative() << " "
-              << "x: " << x.getDerivative() << " "
-              << "w1: " << w1.getDerivative() << " " 
-              << "y: " << y.getDerivative() << " "
-              << std::endl;
-*/
-
-
-/* REVERSE-MODE AD *//*
-    std::shared_ptr<Variable> x(new Variable(0.5));
-    std::shared_ptr<Variable> y(new Variable(4.2));
-
-    auto a = sin(x);
-    auto b = x * y;
-    auto c = a + b;
-
-    std::cout << c->getValue() << std::endl;
-
-    std::cout << a << std::endl;
-    std::cout << b << std::endl;
-    std::cout << c << std::endl;
-
-    auto z = c;
-
-    std::cout << z << std::endl;
-    std::cout << x << std::endl;
-    std::cout << y << std::endl;
-
-    z->setGradient(1);
-    std::cout << x->getGradient() << std::endl;
-    std::cout << y->getGradient() << std::endl;
-
-    std::cout << z << std::endl;
-    std::cout << x << std::endl;
-    std::cout << y << std::endl;
-
-    return 0;*/
-
     std::srand(1);
 
     // Input Layer
@@ -103,7 +54,6 @@ int main(int argc, char** argv)
 
     auto dbg_print = [&]()
     {
-        // PRINT THE BITCH
         std::cout << " *** dbg *** " << std::endl;
 
         std::cout << "b0 : " << b0 << std::endl;
@@ -132,10 +82,10 @@ int main(int argc, char** argv)
 
     auto forward_pass = [=](double arg_x1, double arg_x2)
     {
-        x1->setValue(arg_x1);
-        x2->setValue(arg_x2);
+        x1->Value(arg_x1);
+        x2->Value(arg_x2);
 
-        return output->getValue();
+        return output->Value();
     };
 
     auto xor_function = [](double x0, double x1)
@@ -165,27 +115,27 @@ int main(int argc, char** argv)
         std::cout << "nn(x1, x2): " << forward_pass(input_x1, input_x2) << std::endl;
     }
 
-    output->setGradient(1.0);
-    x1->getGradient();
-    x2->getGradient();
-    b0->getGradient();
-    b1->getGradient();
-    w00->getGradient();
-    w01->getGradient();
-    w02->getGradient();
-    w03->getGradient();
-    w04->getGradient();
-    w05->getGradient();
-    w10->getGradient();
-    w11->getGradient();
-    w12->getGradient();
+    output->Gradient(1.0);
+    x1->Gradient();
+    x2->Gradient();
+    b0->Gradient();
+    b1->Gradient();
+    w00->Gradient();
+    w01->Gradient();
+    w02->Gradient();
+    w03->Gradient();
+    w04->Gradient();
+    w05->Gradient();
+    w10->Gradient();
+    w11->Gradient();
+    w12->Gradient();
     dbg_print();
 
     double alpha = 0.05; // learning rate
 
     auto backward_pass = [=](double expected_label, std::shared_ptr<Variable> output_label)
     {
-        double difference = expected_label - output_label->getValue();
+        double difference = expected_label - output_label->Value();
 
         // J(), the loss function
         double loss = 0.5 * ::pow(difference, 2);
@@ -194,55 +144,55 @@ int main(int argc, char** argv)
         double error_derivative = -difference;
 
         // seed dJ/dJ = 1
-        output->setGradient(1.0);
-        x1->getGradient();
-        x2->getGradient();
+        output->Gradient(1.0);
+        x1->Gradient();
+        x2->Gradient();
 
-        b0->getGradient();
-        b1->getGradient();
+        b0->Gradient();
+        b1->Gradient();
 
-        w00->getGradient();
-        w01->getGradient();
+        w00->Gradient();
+        w01->Gradient();
 
 /*
-        std::cout << " ** dypred/w01 " << w01->getGradient() << std::endl;
-        std::cout << " ** dL/dw01 " << error_derivative * w01->getGradient() << std::endl;
+        std::cout << " ** dypred/w01 " << w01->Gradient() << std::endl;
+        std::cout << " ** dL/dw01 " << error_derivative * w01->Gradient() << std::endl;
         double dE_dypred = error_derivative;
-        double dypred_da2 = w12->getValue() * (output->getValue() * (1 - output->getValue()));
-        double da2_dw01 = b1->getValue() * (a2_activated->getValue() * (1 - a2_activated->getValue()));
+        double dypred_da2 = w12->Value() * (output->Value() * (1 - output->Value()));
+        double da2_dw01 = b1->Value() * (a2_activated->Value() * (1 - a2_activated->Value()));
 
         std::cout << " ** dypred/w01 " << dypred_da2 * da2_dw01 << std::endl;
         std::cout << " ** dL/dw01 " << dE_dypred * dypred_da2 * da2_dw01 << std::endl;
 */
 
-        w02->getGradient();
-        w03->getGradient();
-        w04->getGradient();
-        w05->getGradient();
-        w10->getGradient();
-        w11->getGradient();
-        w12->getGradient();
+        w02->Gradient();
+        w03->Gradient();
+        w04->Gradient();
+        w05->Gradient();
+        w10->Gradient();
+        w11->Gradient();
+        w12->Gradient();
 
         //std::cout << "******** updates ********" << std::endl;
 
         // dJ/dy * dy/dW = dJ/dW
-        w00->setValue(w00->getValue() - error_derivative * alpha * w00->getGradient());
-        w01->setValue(w01->getValue() - error_derivative * alpha * w01->getGradient());
-        w02->setValue(w02->getValue() - error_derivative * alpha * w02->getGradient());
-        w03->setValue(w03->getValue() - error_derivative * alpha * w03->getGradient());
-        w04->setValue(w04->getValue() - error_derivative * alpha * w04->getGradient());
-        w05->setValue(w05->getValue() - error_derivative * alpha * w05->getGradient());
+        w00->Value(w00->Value() - error_derivative * alpha * w00->Gradient());
+        w01->Value(w01->Value() - error_derivative * alpha * w01->Gradient());
+        w02->Value(w02->Value() - error_derivative * alpha * w02->Gradient());
+        w03->Value(w03->Value() - error_derivative * alpha * w03->Gradient());
+        w04->Value(w04->Value() - error_derivative * alpha * w04->Gradient());
+        w05->Value(w05->Value() - error_derivative * alpha * w05->Gradient());
 
-        w10->setValue(w10->getValue() - error_derivative * alpha * w10->getGradient());
-        w11->setValue(w11->getValue() - error_derivative * alpha * w11->getGradient());
-        w12->setValue(w12->getValue() - error_derivative * alpha * w12->getGradient());
+        w10->Value(w10->Value() - error_derivative * alpha * w10->Gradient());
+        w11->Value(w11->Value() - error_derivative * alpha * w11->Gradient());
+        w12->Value(w12->Value() - error_derivative * alpha * w12->Gradient());
         
         return loss;
     };
 
     dbg_print();
 
-    for(int i = 0; i < 100000; i++)
+    for(int i = 0; i < 10000; i++)
     {
         double x1_arg = test_data[i%test_data.size()].first;
         double x2_arg = test_data[i%test_data.size()].second;
@@ -273,7 +223,6 @@ int main(int argc, char** argv)
 
     dbg_print();
 
-/*
     auto linear_function = [](double x0_arg, double x1_arg)
     {
         //return 100;
@@ -281,7 +230,7 @@ int main(int argc, char** argv)
         //return 0.1 * x0_arg + 3;
     };
 
-    for(int i = 0; i < 100000000; i++)
+    for(int i = 0; i < 10000; i++)
     {
         double x1_arg = i%80 - 40;
         double x2_arg = 0;
@@ -311,12 +260,11 @@ int main(int argc, char** argv)
     }
 
     double y_fd = (forward_pass(1 + 0.00001, 1) - forward_pass(1, 1)) / 0.00001;
-    output->setGradient(1.0);
-    x1->getGradient();
-    x2->getGradient();
+    output->Gradient(1.0);
+    x1->Gradient();
+    x2->Gradient();
 
     std::cout << y_fd << std::endl;
     std::cout << x1 << std::endl;
-*/
-    return 0;
+    return EXIT_SUCCESS;
 }
